@@ -8,9 +8,13 @@
     "guid-typescript": "^1.0.9",
     "yaml": "^1.4.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "alsatian": "^2.4.0",
+    "tap-bark": "^1.0.0"
+  },
   "scripts": {
-    "debug": ""
+    "debug": "",
+    "test": "ava"
   },
   "author": "The Sharp Ninja",
   "license": "MIT"

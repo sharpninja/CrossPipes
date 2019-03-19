@@ -1,5 +1,7 @@
-import { Guid } from "guid-typescript";
-export class Dispatcher {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const guid_typescript_1 = require("guid-typescript");
+class Dispatcher {
     constructor(inStream, outStream, errorStream) {
         this.Pipes = new Array();
         this.Errors = new Array();
@@ -59,7 +61,7 @@ export class Dispatcher {
     TriggerError(error) {
         this.Handlers.forEach(h => h(error));
     }
-    GetPipe(name, id = Guid.createEmpty(), pipeDirection = PipeDirection.Outbound) {
+    GetPipe(name, id = guid_typescript_1.Guid.createEmpty(), pipeDirection = PipeDirection.Outbound) {
         const pipe = this.Pipes.find(p => p.ID === id)
             || this.AddPipe(name, pipeDirection);
         return pipe;
@@ -143,15 +145,17 @@ export class Dispatcher {
         }
     }
 }
-export class CrossPipeError {
+exports.Dispatcher = Dispatcher;
+class CrossPipeError {
     constructor(message = "Unspecified", data) {
         this.Message = message;
         this.Data = data || null;
     }
 }
-export class Pipe {
+exports.CrossPipeError = CrossPipeError;
+class Pipe {
     constructor(name, direction = PipeDirection.Outbound, inboundListeners, outboundListeners) {
-        this.ID = Guid.create();
+        this.ID = guid_typescript_1.Guid.create();
         this.InboundListeners = new Array();
         this.OutboundListeners = new Array();
         this.Name = name;
@@ -177,7 +181,8 @@ export class Pipe {
         }
     }
 }
-export class Response {
+exports.Pipe = Pipe;
+class Response {
     constructor(id, packet) {
         this.Packets = new Array();
         this.PacketCount = 0;
@@ -187,7 +192,7 @@ export class Response {
             this.Packets.push(packet);
             this.BeginReceive = new Date();
             this.FinishedReceive = new Date(0);
-            this.HeaderBody = new HeaderBody(Guid.createEmpty(), "", 0);
+            this.HeaderBody = new HeaderBody(guid_typescript_1.Guid.createEmpty(), "", 0);
         }
         else {
             throw new CrossPipeError("Must receive header packet as first response.", packet);
@@ -212,13 +217,14 @@ export class Response {
         return new Enumerator(this.Packets);
     }
 }
-export class Request {
+exports.Response = Response;
+class Request {
     constructor(name, data) {
         this.Packets = new Array();
         this.BeginSend = new Date(0);
         this.FinishedSend = this.BeginSend;
         this.Name = name;
-        this.ID = Guid.create();
+        this.ID = guid_typescript_1.Guid.create();
         const temp = JSON.stringify(data);
         let current = 1;
         let length = 512;
@@ -228,7 +234,7 @@ export class Request {
             current += slice.length;
             this.Packets.push(packet);
         }
-        const packet = Packet.GetNewPacket(this.ID, 0, new HeaderBody(Guid.createEmpty(), this.Name, this.Packets.length));
+        const packet = Packet.GetNewPacket(this.ID, 0, new HeaderBody(guid_typescript_1.Guid.createEmpty(), this.Name, this.Packets.length));
         this.HeaderBody = packet.Body;
         this.Packets.unshift(packet);
     }
@@ -236,6 +242,7 @@ export class Request {
         return new Enumerator(this.Packets);
     }
 }
+exports.Request = Request;
 class HeaderBody {
     constructor(pipeID, name, packetCount) {
         this.PipeID = pipeID;
@@ -264,9 +271,9 @@ class Packet {
         return new Packet(JSON.stringify({ id: id, sequenceId: sequenceId, body: body }));
     }
 }
-export var PipeDirection;
+var PipeDirection;
 (function (PipeDirection) {
     PipeDirection[PipeDirection["Inbound"] = 0] = "Inbound";
     PipeDirection[PipeDirection["Outbound"] = 1] = "Outbound";
-})(PipeDirection || (PipeDirection = {}));
+})(PipeDirection = exports.PipeDirection || (exports.PipeDirection = {}));
 //# sourceMappingURL=pipe.js.map
