@@ -12,7 +12,10 @@ export declare class Dispatcher {
     private readonly OutStream;
     private readonly ErrorStream;
     private readonly PushTimer;
-    constructor(inStream: Readable, outStream: Writable, errorStream: Readable);
+    private static Instance;
+    private constructor();
+    static CreateDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable): Dispatcher;
+    static GetInstance(): Dispatcher;
     private ErrorReceived;
     OnError(handler: {
         (error: CrossPipeError): void;
@@ -85,5 +88,4 @@ export declare enum PipeDirection {
 export interface IListener {
     AcceptData(data: Request | Response): void;
 }
-export declare function GetDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable): Dispatcher;
 export {};

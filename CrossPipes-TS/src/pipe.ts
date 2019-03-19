@@ -20,7 +20,9 @@ export class Dispatcher {
     private readonly ErrorStream: Readable;
     private readonly PushTimer: any;
 
-    constructor(inStream: Readable, outStream: Writable, errorStream: Readable) {
+    private static Instance: Dispatcher;
+
+    private constructor(inStream: Readable, outStream: Writable, errorStream: Readable) {
         this.InStream = inStream;
         this.OutStream = outStream;
         this.ErrorStream = errorStream;
@@ -48,6 +50,21 @@ export class Dispatcher {
                 this.OutboundQueue.splice(0, 1);
             }
         }, 50);
+    }
+
+    public static CreateDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable) : Dispatcher {
+        Dispatcher.Instance = new Dispatcher(inStream, outStream, errorStream);
+
+        return Dispatcher.Instance;
+    }
+    
+    public static GetInstance() : Dispatcher {
+        if(this.Instance)
+        {
+            return this.Instance;     
+        }
+    
+        throw new CrossPipeError("Dispatcher not created yet", null);
     }
 
     private ErrorReceived(errorData: CrossPipeError | string): void {
@@ -179,8 +196,6 @@ export class Dispatcher {
     }
 }
 
-var _dispatcher: Dispatcher;
-
 export class CrossPipeError {
     Message: string;
     Data: any;
@@ -214,7 +229,7 @@ export class Pipe {
         request.HeaderBody.PipeID = this.ID;
 
         if (this.Direction === PipeDirection.Outbound) {
-            _dispatcher.SendRequest(request);
+            Dispatcher.GetInstance().SendRequest(request);
         }
         else {
             this.InboundListeners.forEach(listener => listener.AcceptData(request));
@@ -226,7 +241,7 @@ export class Pipe {
             this.InboundListeners.forEach(listener => listener.AcceptData(response));
         }
         else {
-            _dispatcher.SendResponse(response);
+            Dispatcher.GetInstance().SendResponse(response);
         }
     }
 }
@@ -378,9 +393,4 @@ export enum PipeDirection {
 
 export interface IListener {
     AcceptData(data: Request | Response): void;
-}
-
-export function GetDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable): Dispatcher {
-    _dispatcher = new Dispatcher(inStream, outStream, errorStream);
-    return _dispatcher;
 }

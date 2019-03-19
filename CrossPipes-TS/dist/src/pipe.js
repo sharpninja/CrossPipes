@@ -29,6 +29,16 @@ export class Dispatcher {
             }
         }, 50);
     }
+    static CreateDispatcher(inStream, outStream, errorStream) {
+        Dispatcher.Instance = new Dispatcher(inStream, outStream, errorStream);
+        return Dispatcher.Instance;
+    }
+    static GetInstance() {
+        if (this.Instance) {
+            return this.Instance;
+        }
+        throw new CrossPipeError("Dispatcher not created yet", null);
+    }
     ErrorReceived(errorData) {
         let error = typeof errorData === "string"
             ? new CrossPipeError("Undefined", errorData)
@@ -133,7 +143,6 @@ export class Dispatcher {
         }
     }
 }
-var _dispatcher;
 export class CrossPipeError {
     constructor(message = "Unspecified", data) {
         this.Message = message;
@@ -153,7 +162,7 @@ export class Pipe {
     ReceiveRequestData(request) {
         request.HeaderBody.PipeID = this.ID;
         if (this.Direction === PipeDirection.Outbound) {
-            _dispatcher.SendRequest(request);
+            Dispatcher.GetInstance().SendRequest(request);
         }
         else {
             this.InboundListeners.forEach(listener => listener.AcceptData(request));
@@ -164,7 +173,7 @@ export class Pipe {
             this.InboundListeners.forEach(listener => listener.AcceptData(response));
         }
         else {
-            _dispatcher.SendResponse(response);
+            Dispatcher.GetInstance().SendResponse(response);
         }
     }
 }
@@ -260,8 +269,4 @@ export var PipeDirection;
     PipeDirection[PipeDirection["Inbound"] = 0] = "Inbound";
     PipeDirection[PipeDirection["Outbound"] = 1] = "Outbound";
 })(PipeDirection || (PipeDirection = {}));
-export function GetDispatcher(inStream, outStream, errorStream) {
-    _dispatcher = new Dispatcher(inStream, outStream, errorStream);
-    return _dispatcher;
-}
 //# sourceMappingURL=pipe.js.map
