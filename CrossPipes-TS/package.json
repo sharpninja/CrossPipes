@@ -1,0 +1,17 @@
+{
+  "name": "crosspipes-ts",
+  "version": "1.0.0",
+  "description": "Interop library for interacting over stdin/stdout/stderr",
+  "main": "index.js",
+  "dependencies": {
+    "@types/node": "^11.11.3",
+    "guid-typescript": "^1.0.9",
+    "yaml": "^1.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "debug": ""
+  },
+  "author": "The Sharp Ninja",
+  "license": "MIT"
+}
