@@ -25,15 +25,35 @@ class PipeTestFixture {
     BuildRequest() {
         try {
             const request = new Pip.Request("Test", {
-                test: "data"
+                test: "Request"
             });
             alsatian_1.Expect(request).toBeDefined();
             alsatian_1.Expect(request).not.toBeNull();
             alsatian_1.Expect(request.HeaderBody).toBeDefined();
             alsatian_1.Expect(request.HeaderBody).not.toBeNull();
             alsatian_1.Expect(request.HeaderBody.PacketCount).toBe(1);
-            alsatian_1.Expect(request.HeaderBody.Name).toBe("Test");
+            alsatian_1.Expect(request.HeaderBody.PipeName).toBe("Test");
             alsatian_1.Expect(request.HeaderBody.PipeID).toBe(guid_typescript_1.Guid.createEmpty().toString());
+        }
+        catch (ex) {
+            console.log(ex);
+        }
+    }
+    BuildResponse() {
+        try {
+            const request = new Pip.Request("Test", {
+                test: "Request"
+            });
+            request.GetPackets().moveFirst();
+            var headerPacket = request.GetHeaderPacket();
+            const response = new Pip.Response("Test", headerPacket);
+            response.AddData({ response: "Response" });
+            alsatian_1.Expect(response).toBeDefined();
+            alsatian_1.Expect(response.HeaderBody).toBeDefined();
+            alsatian_1.Expect(response.HeaderBody).not.toBeNull();
+            alsatian_1.Expect(response.HeaderBody.PacketCount).toBe(1);
+            alsatian_1.Expect(response.HeaderBody.PipeName).toBe("Test");
+            alsatian_1.Expect(response.HeaderBody.PipeID).toBe(guid_typescript_1.Guid.createEmpty().toString());
         }
         catch (ex) {
             console.log(ex);
@@ -46,6 +66,9 @@ __decorate([
 __decorate([
     alsatian_1.Test()
 ], PipeTestFixture.prototype, "BuildRequest", null);
+__decorate([
+    alsatian_1.Test()
+], PipeTestFixture.prototype, "BuildResponse", null);
 exports.PipeTestFixture = PipeTestFixture;
 class TestHelpers {
     static GetDispatcher() {

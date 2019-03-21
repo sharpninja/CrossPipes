@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { Writable, Readable } from "stream";
+import * as TDN from "typescript-dotnet-core";
 export declare class Dispatcher {
     readonly Pipes: Array<Pipe>;
     readonly Errors: Array<CrossPipeError>;
@@ -12,6 +13,7 @@ export declare class Dispatcher {
     private readonly ErrorStream;
     private readonly PushTimer;
     private static Instance;
+    private PartialPacketBuffer;
     private constructor();
     static CreateDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable): Dispatcher;
     static GetInstance(): Dispatcher;
@@ -52,10 +54,11 @@ export declare class Response {
     BeginReceive: Date;
     FinishedReceive: Date;
     IsFinished: boolean;
-    constructor(id: string, packet: Packet);
+    constructor(id: string, requestHeaderPacket: Packet);
     HeaderBody: HeaderBody;
+    AddData(data: any): boolean;
     AddPacket(packet: Packet): boolean;
-    GetPackets(): Enumerator<Packet>;
+    GetPackets(): TDN.ArrayEnumerator<Packet>;
 }
 export declare class Request {
     Name: string;
@@ -65,20 +68,22 @@ export declare class Request {
     FinishedSend: Date;
     HeaderBody: HeaderBody;
     constructor(name: string, data: any);
-    GetPackets(): Enumerator<Packet>;
+    GetPackets(): TDN.ArrayEnumerator<Packet>;
+    GetHeaderPacket(): Packet;
 }
 declare class HeaderBody {
     PipeID: string;
-    readonly Name: string;
+    readonly PipeName: string;
     readonly PacketCount: number;
-    constructor(pipeID: string, name: string, packetCount: number);
+    constructor(pipeID: string, pipeName: string, packetCount: number);
 }
 declare class Packet {
     ID: string;
     SequenceID: number;
     Body: any;
-    constructor(data: string);
+    private constructor();
     static GetNewPacket(id: string, sequenceId: number, body: any): Packet;
+    static FromString(data: string): Packet;
 }
 export declare enum PipeDirection {
     Inbound = 0,

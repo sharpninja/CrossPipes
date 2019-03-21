@@ -1,5 +1,8 @@
 import { Guid } from "guid-typescript";
 import { Writable, Readable } from "stream";
+import * as TDN from "typescript-dotnet-core";
+
+const _packetSize = 65536;
 
 export class Dispatcher {
     readonly Pipes: Array<Pipe> = new Array<Pipe>();
@@ -22,15 +25,28 @@ export class Dispatcher {
 
     private static Instance: Dispatcher;
 
+    private PartialPacketBuffer: string = "";
+
     private constructor(inStream: Readable, outStream: Writable, errorStream: Readable) {
         this.InStream = inStream;
         this.OutStream = outStream;
         this.ErrorStream = errorStream;
 
+        this.InStream.setEncoding("utf8");
         this.InStream.on("data", data => {
             try {
-                var packet = new Packet(data);
-                this.AddPacket(new Packet(data));
+                const sdata = this.PartialPacketBuffer + (data as string);
+                const splitter = String.fromCharCode(0xFFFF);
+                var sections = sdata.split(splitter);
+                if (sdata.length === 1) {
+                    this.PartialPacketBuffer = sdata[0];
+                } else {
+                    for (var i = 0; i < sdata.length - 1; ++i) {
+                        var packet = Packet.FromString(sdata[i]);
+                        this.AddPacket(packet);
+                    }
+                    this.PartialPacketBuffer = sdata[i];
+                }
             }
             catch {
                 this.ErrorReceived(new CrossPipeError(
@@ -52,18 +68,17 @@ export class Dispatcher {
         }, 50);
     }
 
-    public static CreateDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable) : Dispatcher {
+    public static CreateDispatcher(inStream: Readable, outStream: Writable, errorStream: Readable): Dispatcher {
         Dispatcher.Instance = new Dispatcher(inStream, outStream, errorStream);
 
         return Dispatcher.Instance;
     }
-    
-    public static GetInstance() : Dispatcher {
-        if(this.Instance)
-        {
-            return this.Instance;     
+
+    public static GetInstance(): Dispatcher {
+        if (this.Instance) {
+            return this.Instance;
         }
-    
+
         throw new CrossPipeError("Dispatcher not created yet", null);
     }
 
@@ -110,34 +125,31 @@ export class Dispatcher {
         if (packet.SequenceID > 0) {
             let r = this.IncompleteResponses.find(r => r.ID === packet.ID);
 
-            if (!r) {
-                this.MismatchedPackets.push(packet);
+            if (r) {
+                r.AddPacket(packet);
             }
             else {
-                const response = r as Response;
-
-                r.AddPacket(packet);
+                const response = new Response(packet.ID, packet)
 
                 const headerBody = response.HeaderBody;
 
-                if (headerBody) {
-                    if (headerBody && headerBody.PacketCount === response.PacketCount) {
-                        const toDeleteIndex = this.IncompleteResponses.indexOf(response);
+                if (headerBody && headerBody.PacketCount === response.PacketCount) {
+                    const toDeleteIndex = this.IncompleteResponses.indexOf(response);
 
-                        if (toDeleteIndex) { this.IncompleteResponses.splice(toDeleteIndex, 1); }
+                    if (toDeleteIndex) { this.IncompleteResponses.splice(toDeleteIndex, 1); }
 
-                        const pipe: Pipe = this.Pipes.find(p => p.ID == headerBody.PipeID) ||
-                            (null as unknown) as Pipe;
+                    const pipe: Pipe = this.Pipes.find(p => p.ID === headerBody.PipeID) ||
+                        (null as unknown) as Pipe;
 
-                        if (pipe !== null) {
-                            pipe.ReceiveResponseData(response);
-                        } else {
-                            this.ErrorReceived(new CrossPipeError(
-                                "Pipe (" + headerBody.PipeID.toString() + ") not found",
-                                response));
-                        }
+                    if (pipe !== null) {
+                        pipe.ReceiveResponseData(response);
+                    } else {
+                        this.ErrorReceived(new CrossPipeError(
+                            "Pipe (" + headerBody.PipeID.toString() + ") not found",
+                            response));
                     }
                 }
+
             }
         }
         else {
@@ -149,7 +161,7 @@ export class Dispatcher {
                 .sort((a, b) => a.SequenceID - b.SequenceID)
                 .forEach(p => {
                     if (p.ID === packet.ID) {
-                        response.AddPacket(p);
+                        response.AddData(p.Body);
                         toRemove.push(counter);
                     }
                     counter++;
@@ -260,26 +272,36 @@ export class Response {
 
     IsFinished = this.FinishedReceive.toUTCString() !== new Date(0).toUTCString();
 
-    constructor(id: string, packet: Packet) {
-        if (packet.SequenceID === 0) {
-            this.ID = id;
-            this.Packets.push(packet);
-            this.BeginReceive = new Date();
-            this.FinishedReceive = new Date(0);
+    constructor(id: string, requestHeaderPacket: Packet) {
+        this.ID = id;
+        this.Packets.push(requestHeaderPacket);
+        this.BeginReceive = new Date();
+        this.FinishedReceive = new Date(0);
+
+        if (requestHeaderPacket.SequenceID !== 0) {
             this.HeaderBody = new HeaderBody(Guid.createEmpty().toString(), "", 0);
-        }
-        else {
-            throw new CrossPipeError(
-                "Must receive header packet as first response.",
-                packet);
+        } else {
+            this.HeaderBody = requestHeaderPacket.Body as HeaderBody;
         }
     }
 
     HeaderBody: HeaderBody;
 
-    public AddPacket(packet: Packet): boolean {
-        if (this.Packets.length === 0) {
-            this.HeaderBody = this.Packets[0].Body;
+    public AddData(data: any): boolean {
+        const newPacket = Packet.GetNewPacket(
+            this.Packets[0].ID,
+            this.Packets.length,
+            data
+        )
+
+        return this.AddPacket(newPacket);
+    }
+
+    AddPacket(packet: Packet): boolean {
+        if (packet.SequenceID === 0) {
+            this.HeaderBody = packet.Body as HeaderBody;
+            this.Packets.unshift(packet);
+            return true;
         }
 
         this.Packets.push(packet);
@@ -296,8 +318,8 @@ export class Response {
         return false;
     }
 
-    public GetPackets(): Enumerator<Packet> {
-        return new Enumerator(this.Packets);
+    public GetPackets():  TDN.ArrayEnumerator<Packet> {
+        return new TDN.ArrayEnumerator<Packet>(this.Packets);
     }
 }
 
@@ -343,19 +365,23 @@ export class Request {
         this.Packets.unshift(packet);
     }
 
-    public GetPackets(): Enumerator<Packet> {
-        return new Enumerator(this.Packets.slice(1));
+    public GetPackets(): TDN.ArrayEnumerator<Packet> {
+        return TDN.ArrayEnumerator<Packet>(this.Packets.slice(1));
+    }
+
+    public GetHeaderPacket(): Packet {
+        return this.Packets[0];
     }
 }
 
 class HeaderBody {
     PipeID: string;
-    readonly Name: string;
+    readonly PipeName: string;
     readonly PacketCount: number;
 
-    constructor(pipeID: string, name: string, packetCount: number) {
+    constructor(pipeID: string, pipeName: string, packetCount: number) {
         this.PipeID = pipeID;
-        this.Name = name;
+        this.PipeName = pipeName;
         this.PacketCount = packetCount;
     }
 }
@@ -365,7 +391,7 @@ class Packet {
     SequenceID: number;
     Body: any;
 
-    constructor(data: string) {
+    private constructor(data: string) {
         try {
             const temp = JSON.parse(data);
 
@@ -384,6 +410,10 @@ class Packet {
 
     static GetNewPacket(id: string, sequenceId: number, body: any) {
         return new Packet(JSON.stringify({ id: id, sequenceId: sequenceId, body: body }));
+    }
+
+    static FromString(data: string) : Packet {
+        return new Packet(data);
     }
 }
 

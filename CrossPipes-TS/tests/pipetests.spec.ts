@@ -16,7 +16,7 @@ export class PipeTestFixture {
     public BuildRequest() {
         try {
             const request = new Pip.Request("Test", {
-                test: "data"
+                test: "Request"
             });
 
             Expect(request).toBeDefined();
@@ -24,10 +24,36 @@ export class PipeTestFixture {
             Expect(request.HeaderBody).toBeDefined();
             Expect(request.HeaderBody).not.toBeNull();
             Expect(request.HeaderBody.PacketCount).toBe(1);
-            Expect(request.HeaderBody.Name).toBe("Test");
+            Expect(request.HeaderBody.PipeName).toBe("Test");
             Expect(request.HeaderBody.PipeID).toBe(Guid.createEmpty().toString());
         }
-        catch (ex){ console.log(ex); }
+        catch (ex) { console.log(ex); }
+    }
+
+    @Test()
+    public BuildResponse() {
+        try {
+            const request = new Pip.Request("Test", {
+                test: "Request"
+            });
+
+            request.GetPackets().moveFirst();
+            var headerPacket = request.GetHeaderPacket();
+
+            const response = new Pip.Response("Test", headerPacket);
+
+            response.AddData({ response: "Response" });
+
+            Expect(response).toBeDefined();
+            Expect(response.HeaderBody).toBeDefined();
+            Expect(response.HeaderBody).not.toBeNull();
+            Expect(response.HeaderBody.PacketCount).toBe(1);
+            Expect(response.HeaderBody.PipeName).toBe("Test");
+            Expect(response.HeaderBody.PipeID).toBe(Guid.createEmpty().toString());
+        }
+        catch(ex) {
+            console.log(ex);
+        }
     }
 }
 

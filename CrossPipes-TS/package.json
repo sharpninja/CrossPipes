@@ -6,6 +6,7 @@
   "dependencies": {
     "@types/node": "^11.11.3",
     "guid-typescript": "^1.0.9",
+    "typescript-dotnet-core": "^1.0.4-preview",
     "yaml": "^1.4.0"
   },
   "devDependencies": {
