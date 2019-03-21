@@ -1,20 +1,34 @@
-import { TapBark } from "tap-bark";
 import { TestSet, TestRunner } from "alsatian";
+import { TapBark } from "tap-bark";
 
-(async () =>
-{
-    const testSet = TestSet.create();
-    testSet.addTestsFromFiles('./tests/**/*.spec.ts');
+// create test set
+const testSet = TestSet.create();
 
-    const testRunner = new TestRunner();
+// add your tests
+testSet.addTestsFromFiles("./tests/**/*.spec.ts");
 
-    testRunner.outputStream
-        .pipe(TapBark.create().getPipeable())
-        .pipe(process.stdout);
+// create a test runner
+const testRunner = new TestRunner();
 
-    await testRunner.run(testSet);
-})().catch(e =>
-{
-    console.error(e);
-    process.exit(1);
-});
+// setup the output
+testRunner.outputStream
+          // this will use alsatian's default output if you remove this
+          // you'll get TAP or you can add your favourite TAP reporter in it's place
+          .pipe(TapBark.create().getPipeable()) 
+          // pipe to the console
+          .pipe(process.stdout);
+
+// run the test set
+testRunner.run(testSet)
+          // this will be called after all tests have been run
+          .then((results) => done())
+          // this will be called if there was a problem
+          .catch((error) => doSomethingWith(error));
+
+function done() {
+    console.log("Done");
+}
+
+function doSomethingWith(error: any) {
+    console.log("ERROR:" + error);
+}

@@ -61,7 +61,7 @@ class Dispatcher {
     TriggerError(error) {
         this.Handlers.forEach(h => h(error));
     }
-    GetPipe(name, id = guid_typescript_1.Guid.createEmpty(), pipeDirection = PipeDirection.Outbound) {
+    GetPipe(name, id = guid_typescript_1.Guid.createEmpty().toString(), pipeDirection = PipeDirection.Outbound) {
         const pipe = this.Pipes.find(p => p.ID === id)
             || this.AddPipe(name, pipeDirection);
         return pipe;
@@ -155,7 +155,7 @@ class CrossPipeError {
 exports.CrossPipeError = CrossPipeError;
 class Pipe {
     constructor(name, direction = PipeDirection.Outbound, inboundListeners, outboundListeners) {
-        this.ID = guid_typescript_1.Guid.create();
+        this.ID = guid_typescript_1.Guid.create().toString();
         this.InboundListeners = new Array();
         this.OutboundListeners = new Array();
         this.Name = name;
@@ -192,7 +192,7 @@ class Response {
             this.Packets.push(packet);
             this.BeginReceive = new Date();
             this.FinishedReceive = new Date(0);
-            this.HeaderBody = new HeaderBody(guid_typescript_1.Guid.createEmpty(), "", 0);
+            this.HeaderBody = new HeaderBody(guid_typescript_1.Guid.createEmpty().toString(), "", 0);
         }
         else {
             throw new CrossPipeError("Must receive header packet as first response.", packet);
@@ -224,22 +224,22 @@ class Request {
         this.BeginSend = new Date(0);
         this.FinishedSend = this.BeginSend;
         this.Name = name;
-        this.ID = guid_typescript_1.Guid.create();
-        const temp = JSON.stringify(data);
-        let current = 1;
+        this.ID = guid_typescript_1.Guid.create().toString();
+        const temp = "\0" + JSON.stringify(data);
+        let current = 0;
         let length = 512;
         let slice;
-        while (slice = temp.slice(current, Math.min(length, temp.length - (current - 1) * length))) {
-            let packet = Packet.GetNewPacket(this.ID, current, slice);
+        while (slice = temp.slice(current + 1, Math.min(length, temp.length - (current) * length))) {
+            let packet = Packet.GetNewPacket(this.ID, current + 1, slice);
             current += slice.length;
             this.Packets.push(packet);
         }
-        const packet = Packet.GetNewPacket(this.ID, 0, new HeaderBody(guid_typescript_1.Guid.createEmpty(), this.Name, this.Packets.length));
+        const packet = Packet.GetNewPacket(this.ID, 0, new HeaderBody(guid_typescript_1.Guid.createEmpty().toString(), this.Name, this.Packets.length));
         this.HeaderBody = packet.Body;
         this.Packets.unshift(packet);
     }
     GetPackets() {
-        return new Enumerator(this.Packets);
+        return new Enumerator(this.Packets.slice(1));
     }
 }
 exports.Request = Request;
@@ -254,7 +254,7 @@ class Packet {
     constructor(data) {
         try {
             const temp = JSON.parse(data);
-            if (temp.id && temp.sequenceId && temp.body) {
+            if (temp.id && temp.body) {
                 this.ID = temp.id;
                 this.SequenceID = temp.sequenceId;
                 this.Body = temp.body;

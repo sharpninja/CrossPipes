@@ -1,5 +1,5 @@
 import { Guid } from "guid-typescript";
-//import { Writable, Readable } from "stream";
+import { Writable, Readable } from "stream";
 
 export class Dispatcher {
     readonly Pipes: Array<Pipe> = new Array<Pipe>();
@@ -92,7 +92,7 @@ export class Dispatcher {
         this.Handlers.forEach(h => h(error));
     }
 
-    GetPipe(name: string, id: Guid = Guid.createEmpty(), pipeDirection: PipeDirection = PipeDirection.Outbound): Pipe {
+    GetPipe(name: string, id: string = Guid.createEmpty().toString(), pipeDirection: PipeDirection = PipeDirection.Outbound): Pipe {
         const pipe: Pipe =
             this.Pipes.find(p => p.ID === id)
             || this.AddPipe(name, pipeDirection);
@@ -207,7 +207,7 @@ export class CrossPipeError {
 }
 
 export class Pipe {
-    readonly ID: Guid = Guid.create();
+    readonly ID: string = Guid.create().toString();
     readonly Name: string;
     readonly Direction: PipeDirection;
     readonly InboundListeners: Array<IListener> =
@@ -247,7 +247,7 @@ export class Pipe {
 }
 
 export class Response {
-    ID: Guid;
+    ID: string;
     private Packets: Array<Packet> =
         new Array<Packet>();
 
@@ -260,13 +260,13 @@ export class Response {
 
     IsFinished = this.FinishedReceive.toUTCString() !== new Date(0).toUTCString();
 
-    constructor(id: Guid, packet: Packet) {
+    constructor(id: string, packet: Packet) {
         if (packet.SequenceID === 0) {
             this.ID = id;
             this.Packets.push(packet);
             this.BeginReceive = new Date();
             this.FinishedReceive = new Date(0);
-            this.HeaderBody = new HeaderBody(Guid.createEmpty(), "", 0);
+            this.HeaderBody = new HeaderBody(Guid.createEmpty().toString(), "", 0);
         }
         else {
             throw new CrossPipeError(
@@ -303,7 +303,7 @@ export class Response {
 
 export class Request {
     Name: string;
-    ID: Guid;
+    ID: string;
     private Packets: Array<Packet> =
         new Array<Packet>();
 
@@ -318,42 +318,42 @@ export class Request {
         this.FinishedSend = this.BeginSend;
 
         this.Name = name;
-        this.ID = Guid.create();
+        this.ID = Guid.create().toString();
 
-        const temp = JSON.stringify(data);
+        const temp = "\0" + JSON.stringify(data);
 
-        let current = 1;
+        let current = 0;
         let length = 512;
         let slice: String;
-        while (slice = temp.slice(current, Math.min(length, temp.length - (current - 1) * length))) {
-            let packet = Packet.GetNewPacket(this.ID, current, slice);
+        while (slice = temp.slice(current + 1, Math.min(length, temp.length - (current) * length))) {
+            let packet = Packet.GetNewPacket(this.ID, current + 1, slice);
             current += slice.length;
 
             this.Packets.push(packet);
         }
 
         const packet = Packet.GetNewPacket(this.ID, 0, new HeaderBody(
-            Guid.createEmpty(),
+            Guid.createEmpty().toString(),
             this.Name,
             this.Packets.length
         ));
 
-        this.HeaderBody = packet.Body;
+        this.HeaderBody = packet.Body as HeaderBody;
 
         this.Packets.unshift(packet);
     }
 
     public GetPackets(): Enumerator<Packet> {
-        return new Enumerator(this.Packets);
+        return new Enumerator(this.Packets.slice(1));
     }
 }
 
 class HeaderBody {
-    PipeID: Guid;
+    PipeID: string;
     readonly Name: string;
     readonly PacketCount: number;
 
-    constructor(pipeID: Guid, name: string, packetCount: number) {
+    constructor(pipeID: string, name: string, packetCount: number) {
         this.PipeID = pipeID;
         this.Name = name;
         this.PacketCount = packetCount;
@@ -361,7 +361,7 @@ class HeaderBody {
 }
 
 class Packet {
-    ID: Guid;
+    ID: string;
     SequenceID: number;
     Body: any;
 
@@ -369,7 +369,7 @@ class Packet {
         try {
             const temp = JSON.parse(data);
 
-            if (temp.id && temp.sequenceId && temp.body) {
+            if (temp.id && temp.body) {
                 this.ID = temp.id;
                 this.SequenceID = temp.sequenceId;
                 this.Body = temp.body;
@@ -382,7 +382,7 @@ class Packet {
         }
     }
 
-    static GetNewPacket(id: Guid, sequenceId: number, body: any) {
+    static GetNewPacket(id: string, sequenceId: number, body: any) {
         return new Packet(JSON.stringify({ id: id, sequenceId: sequenceId, body: body }));
     }
 }

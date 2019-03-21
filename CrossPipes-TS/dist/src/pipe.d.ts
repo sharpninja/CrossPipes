@@ -1,5 +1,4 @@
 /// <reference types="node" />
-import { Guid } from "guid-typescript";
 import { Writable, Readable } from "stream";
 export declare class Dispatcher {
     readonly Pipes: Array<Pipe>;
@@ -24,7 +23,7 @@ export declare class Dispatcher {
         (error: CrossPipeError): void;
     }): void;
     private TriggerError;
-    GetPipe(name: string, id?: Guid, pipeDirection?: PipeDirection): Pipe;
+    GetPipe(name: string, id?: string, pipeDirection?: PipeDirection): Pipe;
     private AddPipe;
     AddPacket(packet: Packet): void;
     SendRequest(request: Request): void;
@@ -36,7 +35,7 @@ export declare class CrossPipeError {
     constructor(message: string | undefined, data: any);
 }
 export declare class Pipe {
-    readonly ID: Guid;
+    readonly ID: string;
     readonly Name: string;
     readonly Direction: PipeDirection;
     readonly InboundListeners: Array<IListener>;
@@ -46,21 +45,21 @@ export declare class Pipe {
     ReceiveResponseData(response: Response): void;
 }
 export declare class Response {
-    ID: Guid;
+    ID: string;
     private Packets;
     PacketCount: number;
     Data: any;
     BeginReceive: Date;
     FinishedReceive: Date;
     IsFinished: boolean;
-    constructor(id: Guid, packet: Packet);
+    constructor(id: string, packet: Packet);
     HeaderBody: HeaderBody;
     AddPacket(packet: Packet): boolean;
     GetPackets(): Enumerator<Packet>;
 }
 export declare class Request {
     Name: string;
-    ID: Guid;
+    ID: string;
     private Packets;
     BeginSend: Date;
     FinishedSend: Date;
@@ -69,17 +68,17 @@ export declare class Request {
     GetPackets(): Enumerator<Packet>;
 }
 declare class HeaderBody {
-    PipeID: Guid;
+    PipeID: string;
     readonly Name: string;
     readonly PacketCount: number;
-    constructor(pipeID: Guid, name: string, packetCount: number);
+    constructor(pipeID: string, name: string, packetCount: number);
 }
 declare class Packet {
-    ID: Guid;
+    ID: string;
     SequenceID: number;
     Body: any;
     constructor(data: string);
-    static GetNewPacket(id: Guid, sequenceId: number, body: any): Packet;
+    static GetNewPacket(id: string, sequenceId: number, body: any): Packet;
 }
 export declare enum PipeDirection {
     Inbound = 0,

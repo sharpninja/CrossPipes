@@ -14,15 +14,72 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const alsatian_1 = require("alsatian");
+const guid_typescript_1 = require("guid-typescript");
 const Pip = __importStar(require("../src/pipe"));
+const stream_1 = require("stream");
 class PipeTestFixture {
     CreateDispatcher() {
-        const dispatcher = Pip.Dispatcher.GetInstance();
+        const dispatcher = TestHelpers.GetDispatcher();
         alsatian_1.Expect(dispatcher).toBeDefined();
+    }
+    BuildRequest() {
+        try {
+            const request = new Pip.Request("Test", {
+                test: "data"
+            });
+            alsatian_1.Expect(request).toBeDefined();
+            alsatian_1.Expect(request).not.toBeNull();
+            alsatian_1.Expect(request.HeaderBody).toBeDefined();
+            alsatian_1.Expect(request.HeaderBody).not.toBeNull();
+            alsatian_1.Expect(request.HeaderBody.PacketCount).toBe(1);
+            alsatian_1.Expect(request.HeaderBody.Name).toBe("Test");
+            alsatian_1.Expect(request.HeaderBody.PipeID).toBe(guid_typescript_1.Guid.createEmpty().toString());
+        }
+        catch (ex) {
+            console.log(ex);
+        }
     }
 }
 __decorate([
     alsatian_1.Test()
 ], PipeTestFixture.prototype, "CreateDispatcher", null);
+__decorate([
+    alsatian_1.Test()
+], PipeTestFixture.prototype, "BuildRequest", null);
 exports.PipeTestFixture = PipeTestFixture;
+class TestHelpers {
+    static GetDispatcher() {
+        const instream = StreamUtils.GetReadable();
+        const errstream = StreamUtils.GetReadable();
+        const outstream = StreamUtils.GetWritable();
+        return Pip.Dispatcher.CreateDispatcher(instream, outstream, errstream);
+    }
+}
+class RequestTransformer extends stream_1.Transform {
+    constructor() {
+        super();
+    }
+    _transform(chunk, encoding, next) {
+        if (typeof chunk === Pip.Request.name) {
+            const packets = chunk.GetPackets();
+            packets.moveFirst();
+            const response = new Pip.Response(guid_typescript_1.Guid.createEmpty().toString(), packets.item());
+            packets.moveNext();
+            while (!packets.atEnd()) {
+                response.AddPacket(packets.item());
+                packets.moveNext();
+            }
+            this.push(response);
+        }
+    }
+}
+class StreamUtils {
+    static GetReadable() {
+        return this._transform;
+    }
+    static GetWritable() {
+        return this._transform;
+    }
+}
+StreamUtils._transform = new RequestTransformer();
 //# sourceMappingURL=pipetests.spec.js.map

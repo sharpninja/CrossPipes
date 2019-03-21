@@ -7,12 +7,11 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/CrossPipes-TS/runner.ts",
+            "name": "Debug Typescript Tests",
+            "program": "${workspaceFolder}/CrossPipes-TS/node_modules/alsatian/cli/alsatian-cli.js",
+            "args": [ "${workspaceFolder}/CrossPipes-TS/dist/tests/**/*.spec.js", "--tap" ],
             "preLaunchTask": "tsc: build - tsconfig.json",
-            "outFiles": [
-                "${workspaceFolder}/CrossPipes-TS/dist**/*.js"
-            ]
+            "sourceMaps": true
         }
     ]
 }

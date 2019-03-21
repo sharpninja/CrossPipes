@@ -10,11 +10,12 @@
   },
   "devDependencies": {
     "alsatian": "^2.4.0",
-    "tap-bark": "^1.0.0"
+    "tap-bark": "^1.0.0",
+    "typescript": "^3.3.4000"
   },
   "scripts": {
     "debug": "",
-    "test": "ava"
+    "test": "alsatian ./tests/**/*.ts --tap"
   },
   "author": "The Sharp Ninja",
   "license": "MIT"
